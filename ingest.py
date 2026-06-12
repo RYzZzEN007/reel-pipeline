@@ -30,13 +30,28 @@ def get_metadata(path):
     # find the video stream (files also contain audio streams)
     video = next(s for s in data["streams"] if s["codec_type"] == "video")
 
+   
+      # iPhone footage often stores video sideways + a rotation flag.
+    # Raw width/height lie unless we honor that flag.
+    rotation = 0
+    for side_data in video.get("side_data_list", []):
+        if "rotation" in side_data:
+            rotation = abs(int(side_data["rotation"]))
+
+    width = int(video["width"])
+    height = int(video["height"])
+    if rotation in (90, 270):
+        width, height = height, width   # swap: it's actually portrait
+
     return {
-        "width": int(video["width"]),
-        "height": int(video["height"]),
-        "fps": round(eval(video["r_frame_rate"])),  # comes as "30000/1001"
+        "width": width,
+        "height": height,
+        "rotation_flag": rotation,
+        "fps": round(eval(video["r_frame_rate"])),
         "duration_sec": float(data["format"]["duration"]),
         "size_mb": round(int(data["format"]["size"]) / 1_000_000, 1),
     }
+    
 
 
 if __name__ == "__main__":

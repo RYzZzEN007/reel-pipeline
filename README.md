@@ -46,25 +46,18 @@ python pipeline.py input.mov --hook "your caption" --watermark "@yourhandle"
 | `--keep-temp` | Keep the intermediate anonymized file | off |
 
 ---
-
 ## Pipeline
+
+```text
 raw clip
-
-│
-
-├─ ingest      validate + extract metadata (ffprobe)
-
-├─ anonymize   detect & blur all faces (YuNet DNN)
-
-├─ caption     burn hook + watermark, restore audio (ffmpeg)
-
-└─ export      encode to Instagram spec
-
-│
-
-└→ output/<name>_reel.mp4
----
-
+   │
+   ├─ ingest      validate + extract metadata (ffprobe)
+   ├─ anonymize   detect & blur all faces (YuNet DNN)
+   ├─ caption     burn hook + watermark, restore audio (ffmpeg)
+   └─ export      encode to Instagram spec
+   │
+   └─→ output/<name>_reel.mp4
+```
 ## How It Works
 
 ### `ingest.py` — validation & metadata

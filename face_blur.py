@@ -5,7 +5,6 @@ import os
 
 MODEL_PATH = "face_detection_yunet_2023mar.onnx"
 DEBUG = "--debug" in sys.argv
-STYLE = "pixelate" if "--pixelate" in sys.argv else "blur"
 
 
 def load_detector(width, height):
@@ -29,15 +28,13 @@ def anonymize_region(region, style):
     rh, rw = region.shape[:2]
 
     if style == "pixelate":
-        # mosaic: crush to a 7x7 block grid, scale back with no smoothing
         blocks = 7
         small = cv2.resize(region, (blocks, blocks),
                            interpolation=cv2.INTER_LINEAR)
         anon = cv2.resize(small, (rw, rh),
                           interpolation=cv2.INTER_NEAREST)
     else:
-        # blur strength scales with face size; kernel must be odd
-        k = max(31, (rw // 2) | 1)
+        k = max(31, (rw // 2) | 1)   # blur scales with face size; must be odd
         anon = cv2.GaussianBlur(region, (k, k), 0)
 
     # feathered elliptical mask: soft oval, not a hard rectangle
@@ -50,7 +47,7 @@ def anonymize_region(region, style):
     return (anon * mask3 + region * (1 - mask3)).astype("uint8")
 
 
-def process_video(input_path, output_path, persist_frames=10):
+def process_video(input_path, output_path, style="blur", persist_frames=10):
     video = cv2.VideoCapture(input_path)
 
     fps = video.get(cv2.CAP_PROP_FPS)
@@ -101,14 +98,14 @@ def process_video(input_path, output_path, persist_frames=10):
                 fresh.append([x1, y1, x2, y2, persist_frames])
 
             if fresh:
-                cached_boxes = fresh   # only replace cache on real keepers
+                cached_boxes = fresh
 
         if not DEBUG:
             still_alive = []
             for x1, y1, x2, y2, ttl in cached_boxes:
                 region = frame[y1:y2, x1:x2]
                 if region.size > 0:
-                    frame[y1:y2, x1:x2] = anonymize_region(region, STYLE)
+                    frame[y1:y2, x1:x2] = anonymize_region(region, style)
                 if ttl - 1 > 0:
                     still_alive.append([x1, y1, x2, y2, ttl - 1])
             cached_boxes = still_alive
@@ -131,15 +128,14 @@ if __name__ == "__main__":
         sys.exit("Usage: python face_blur.py <video_file> [--pixelate] [--debug]")
 
     input_path = sys.argv[1]
+    cli_style = "pixelate" if "--pixelate" in sys.argv else "blur"
     name, _ = os.path.splitext(os.path.basename(input_path))
 
     if DEBUG:
         suffix = "debug"
-    elif STYLE == "pixelate":
-        suffix = "pixelated"
     else:
-        suffix = "blurred"
+        suffix = cli_style if cli_style == "pixelate" else "blurred"
     output_path = f"{name}_{suffix}.mp4"
 
-    process_video(input_path, output_path)
+    process_video(input_path, output_path, style=cli_style)
     print(f"   saved -> {output_path}")
